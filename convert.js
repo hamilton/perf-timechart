@@ -14,7 +14,7 @@ const WAIT_KIND = 2;
 
 function convert(cpu) {
   var dest = [];
-  for (var y =0;y<cpu.samples.length;y+=3) {
+  for (var y = 0; y < cpu.samples.length; y += 3) {
     var s = cpu.samples;
     var cpu_num = s[y+0]
     //convert negative states into error bars...ignore cpu #
@@ -29,14 +29,11 @@ function convert(cpu) {
   var dedup = []
   //TODO: should be able to reverse instead
   dest.sort(compare)
-  var last_io;
+  var last_by_type = {};
   for (var i = 0;i < dest.length;i++) {
     var current = dest[i];
-    //if (dedup.length && last_by_type[current[2]]) {
-      if (dedup.length) {
-      var last = dedup[dedup.length-1];
-
-      //last_by_type[current[2]] = last;
+    if (last_by_type[current[2]]) {
+      var last = last_by_type[current[2]];
       var skip = false;
       if (last[0] == current[0]) {
         last[1] = Math.max(last[1], current[1]);
@@ -47,28 +44,34 @@ function convert(cpu) {
         skip = true
       }
       if (skip) {
-        if (current[2] == IO_WAIT)
-          last[2] = IO_WAIT
+        //if (current[2] == IO_WAIT)
+        //  last[2] = IO_WAIT
         continue
       }
     }
     dedup.push(current);
-    //last_by_type[current[2]] = current;
+    last_by_type[current[2]] = current;
   }
+
   return dedup;
 }
 
 var fs = require('fs');
 
-var data = fs.readFileSync("data.json", "utf8");
+var input_file = "data.json";
+if (process.argv.length >= 3) {
+  input_file = process.argv[2];
+}
+
+var data = fs.readFileSync(input_file, "utf8");
 var lines = data.split("\n");
 var converted = []
-for (var i=0;i<lines.length;i++) {
+for (var i = 0; i < lines.length; i++) {
   var l = lines[i]
   if (!l.length) continue;
   var o = JSON.parse(l)
   if (o.process && o.samples.length) {
-    var c = convert(o, i)
+    var c = convert(o);
     var n = {y:converted.length, id:converted.length, name:(o.process + "/" + o.pid), samples:c, i:0}
     if (!c.length)
       continue
